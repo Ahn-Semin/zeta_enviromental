@@ -14,7 +14,7 @@
 //#define OLED_RESET 6
 //Adafruit_SSD1306 display(OLED_RESET);
 
-SoftwareSerial HCHO_serial(10,11);
+//SoftwareSerial Serial3(10,11);
 int incomingByte[9] = {0,};
 
 unsigned long current_time = 0;
@@ -30,7 +30,7 @@ bool zero_flag = true;
 void setup() {
   // put your setup code here, to run once:
   Serial.begin(9600);
-  HCHO_serial.begin(9600);
+  Serial3.begin(9600);
   pinMode(A5,INPUT);
   prev_time = millis();
   Serial.println("setup fin.");
@@ -40,9 +40,9 @@ void setup() {
 
 void loop() {
   // put your main code here, to run repeatedly:
-  if(HCHO_serial.available()>0){
+  if(Serial3.available()>0){
     for(int i = 0; i < LENGTH; i++){
-      incomingByte[i] = HCHO_serial.read();
+      incomingByte[i] = Serial3.read();
       Serial.print("0x");Serial.print(incomingByte[i],HEX);Serial.print(" ");
       delay(1);
       

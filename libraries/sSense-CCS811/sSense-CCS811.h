@@ -35,7 +35,7 @@
  */
 
  
-#define I2C_CCS811_ADDRESS 0x5A         //CCS811 I2C address
+#define I2C_CCS811_ADDRESS 0x5B         //CCS811 I2C address
 #define CCS811_WAKE_PIN 5               //CCS811 WAKE PIN
 //#define CCS811_INT_PIN 8              //CCS811 IRQ PIN
 

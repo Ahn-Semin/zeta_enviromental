@@ -4,13 +4,13 @@ char rxByte[11];
 void setup() {
   // put your setup code here, to run once:
   Serial.begin(9600);
-  Serial3.begin(38400,SERIAL_8N1);  //38400 baud rate, 8bit, no parity bit, 1 stop bit
+  Serial1.begin(38400,SERIAL_8N1);  //38400 baud rate, 8bit, no parity bit, 1 stop bit
   Serial.println("setup finish");
 }
 
 void loop() {
-  if(Serial3.available()){
-    int no =  Serial3.readBytes(rxByte,10);
+  if(Serial1.available()){
+    int no =  Serial1.readBytes(rxByte,10);
     //rxByte[no] = '\0';
     //CO2 = (uint32_t)rxByte;
     CO2 = Byte2int(rxByte);

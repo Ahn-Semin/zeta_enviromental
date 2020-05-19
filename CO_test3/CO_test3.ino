@@ -21,12 +21,13 @@
 #include <ZE07CO_Sensor.h>
 #include <SoftwareSerial.h>
 
-#define SensorSerialPin	10	//this pin read the uart signal from the HCHO sensor
+#define SensorSerialPin	A0	//this pin read the uart signal from the HCHO sensor
 
-HardwareSerial* CO_Serial = &Serial3;
+HardwareSerial* CO_Serial = &Serial1;
 float VO = 0.0;
 float ppm = 0.0;
 ZE07CO_Sensor CO_Sensor(CO_Serial);
+ZE07CO_Sensor anal(SensorSerialPin,5.0);
 
 void setup()
 {  
@@ -37,14 +38,13 @@ void setup()
 
 void loop()
 {
-    if(CO_Sensor.available(2000)>0)	
+    if(CO_Sensor.available(5000)>0)	
     {
-      Serial.print(CO_Sensor.uartReadPPM());
-      Serial.println("ppm");
-      VO = (float)analogRead(A0)*5/1024.0;
-      Serial.println(VO);
+
+      VO = anal.dacReadPPM();
+      //Serial.println(VO);
       ppm = (VO-0.41)*500/1.6;
-      Serial.print(ppm);
-      Serial.println("ppm");
+      Serial.println(ppm);
+     // Serial.println("ppm");
     }
 }

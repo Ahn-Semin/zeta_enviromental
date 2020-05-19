@@ -53,7 +53,7 @@ CCS811 ssenseCCS811;
 void setup()
 {
   Serial.begin(SERIAL_SPEED);
-  delay(5000);
+  delay(2000);
   Serial.println("s-Sense CCS811 I2C sensor.");
   if(!ssenseCCS811.begin(uint8_t(I2C_CCS811_ADDRESS), uint8_t(CCS811_WAKE_PIN), driveMode_1sec))
     Serial.println("Initialization failed.");
@@ -81,7 +81,7 @@ void loop()
     DebugPort.print("CO2[");
     DebugPort.print(ssenseCCS811.getCO2());
     DebugPort.print("] tVOC[");
-    DebugPort.print(ssenseCCS811.gettVOC());
+    DebugPort.print((float)ssenseCCS811.gettVOC()*500/160);
     DebugPort.print("] millis[");
     DebugPort.print(millis());
     DebugPort.print("]");

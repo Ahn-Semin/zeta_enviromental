@@ -1,7 +1,7 @@
 /* 
   *       Author         Ahn semin
   *       Created        2020.03.24
-  *       Last modified  2020.03.31
+  *       Last modified  2020.04.24
   *       Description    enviromental sensors header
   */
  
@@ -24,28 +24,35 @@
 
 #define Number_of_Thread 0  // 4 for sensors, 1 for ROS publishing, 1 for loop, 1 for I2C
 
+#define UART1_RX      19
+#define UART1_TX      18
+#define UART2_RX      17
+#define UART2_TX      16
+#define UART3_RX      15
+#define UART3_TX      14
+
 // pin config
-#define Dust_rxPIN    19  // must use with 3.3V level shifter
-#define Dust_txPIN    18
-#define CO2_rxPIN     17
-#define CO2_txPIN     16
-#define HCHO_rxPIN    15
-#define HCHO_txPIN    14
+#define Dust_rxPIN    UART2_RX  // must use with 3.3V level shifter
+#define Dust_txPIN    UART2_TX
+#define CO2_rxPIN     UART1_RX
+#define CO2_txPIN     UART1_TX
+#define HCHO_rxPIN    UART3_RX
+#define HCHO_txPIN    UART3_TX
 //#define CO_rxPIN      0
 //#define CO_txPIN      0
 #define CO_dacPIN     A0
 #define VOC_rxPIN     0
 #define VOC_txPIN     0
 
-#define NO2_rxPIN     19 // must use with 3.3V level shifter
-#define NO2_txPIN     18
-#define Rn_rxPIN      17
-#define Rn_txPIN      16
-#define DHT_PIN       2
+#define NO2_rxPIN     UART1_RX // must use with 3.3V level shifter
+#define NO2_txPIN     UART1_TX
+#define Rn_rxPIN      UART2_RX
+#define Rn_txPIN      UART2_RX
+#define DHT_PIN       12
 #define DHTTYPE       DHT22
 
 // other constants
-#define Serial_Speed              9600
+#define Serial_Speed              115200
 #define Dust_Serial_Speed         9600
 #define CO2_Serial_Speed          38400
 #define HCHO_Serial_Speed         9600
@@ -67,6 +74,8 @@
 #define HCHO_len                  9
 #define ADC_span                  (float)1024.0
 #define ADC_ref                   5
+#define CO_full_range             500
+#define CO_Vout_span              1.6f
 
 
 #define TEMP_ref                  21.0
@@ -78,6 +87,8 @@
 #define Nano2Milli                0.000001
 #define mSvyToBqm3                58.824
 #define TRASH                     -1
+
+
 
 
 /* Radon Command */

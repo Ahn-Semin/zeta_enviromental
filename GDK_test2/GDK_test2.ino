@@ -14,7 +14,6 @@ FooThread::FooThread(int id) {
 /* Pin map
 ::
 Digital 2 - RX (to Gamma Sensor TX), Digital 3 - TX (to Gamma Sensor RX) */
-SoftwareSerial mySerial(2, 3);
 Timer ts1;
 
 /* Command */
@@ -34,7 +33,7 @@ char rec_data[50]; // Array for received command
 bool request_flag = true; // enable or disable request automatically
 void setup() {
 Serial.begin(9600); // PC - Arduino
-mySerial.begin(9600); // Arduino - Gamma Sensor
+Serial2.begin(9600); // Arduino - Gamma Sensor
 ts1.every(1000, RequestData); // Request to Gamma Sensor
 Gamma_INIT();
 }
@@ -48,7 +47,7 @@ return true;
 
 void RequestData(){
 byte send_data[6] = {0x02, cmd_GAMMA_RESULT_QUERY_1MIN, 0x3A, 0x3F, 0x0D, 0x0A};
-mySerial.write(send_data, 6);
+Serial2.write(send_data, 6);
 }
 
 /* Gamma Sensor Initialize */
@@ -63,11 +62,11 @@ Serial.println("====================================================");
 }
 
 void RecUartData(){
-int rec_size = mySerial.available();
+int rec_size = Serial2.available();
 if (rec_size > 0) {
 for (int i = 0; i < rec_size; i++)
 {
-rec_data[i] = mySerial.read();
+rec_data[i] = Serial2.read();
 }
 rec_data[rec_size] = '\0';
 Serial.print(rec_data);
@@ -77,14 +76,14 @@ Serial.print(rec_data);
 /* Read Firmware */
 void Read_FW(){
 byte send_data[6] = {0x02, cmd_GAMMA_FW_VERSION_QUERY, ':', '?', 0x0D, 0x0A};
-mySerial.write(send_data, 6);
+Serial2.write(send_data, 6);
 delay(100);
 }
 
 /* Meawurement Reset */
 void Reset(){
 byte send_data[6] = {0x02, cmd_GAMMA_RESET, ':', '1', 0x0D, 0x0A};
-mySerial.write(send_data, 6);
+Serial2.write(send_data, 6);
 Serial.println("Reset.");
 delay(100);
 }

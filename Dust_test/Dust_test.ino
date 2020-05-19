@@ -1,14 +1,14 @@
 #include "PMS.h"
 #include "SoftwareSerial.h"
 
-SoftwareSerial pms_serial(A1,A0);
-PMS pms(pms_serial);
+HardwareSerial* pms_serial = &Serial1;
+PMS pms(Serial1);
 PMS::DATA data;
 
 void setup()
 {
   Serial.begin(9600);   // GPIO1, GPIO3 (TX/RX pin on ESP-12E Development Board)
-  pms_serial.begin(9600);  // GPIO2 (D4 pin on ESP-12E Development Board)
+  pms_serial->begin(9600);  // GPIO2 (D4 pin on ESP-12E Development Board)
   pms.activeMode();
 }                 
 

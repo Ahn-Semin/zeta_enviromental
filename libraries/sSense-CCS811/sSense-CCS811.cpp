@@ -68,8 +68,8 @@ boolean CCS811::begin(uint8_t I2C_ADDR, uint8_t WAKE_PIN, int driveMode)// drive
 
 void CCS811::wakeup()// wake up CCS811 ITBP add
 {
-  pinMode(_WAKE_PIN, OUTPUT);
-  digitalWrite(_WAKE_PIN, LOW);	
+  //pinMode(_WAKE_PIN, OUTPUT);
+  //digitalWrite(_WAKE_PIN, LOW);	
 }
 
 void CCS811::sleep()// goto sleep CCS811 ITBP add
