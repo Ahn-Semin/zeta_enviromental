@@ -1,12 +1,12 @@
-
-
 void setup() {
   // put your setup code here, to run once:
-  pinMode(9,OUTPUT);
+  pinMode(6,OUTPUT);
 }
 
 void loop() {
   // put your main code here, to run repeatedly:
-  analogWrite(9,122);
-  delay(990);
+  delay(1000);
+  digitalWrite(6,HIGH);
+  delay(1000);
+  digitalWrite(6,LOW);
 }

@@ -9,7 +9,7 @@
 #define SerialTxControl  12   //RS485 trans & rec control pin
 #define RS485Transmit    HIGH
 #define RS485Receive     LOW
-#define RS485_baudrate   9600 
+#define RS485_baudrate   9600
 
 #define RecDataLen_Short        6
 #define RecDataNoCRCLen_Short   4
@@ -25,20 +25,21 @@
 #include <CRC16_modbus.h>
 #include <Arduino.h>
 #include <ArduinoJson.h>
+#include <Timer.h>
 
 
 HardwareSerial* RS485_Serial = &Serial1;
 
 // WIFI infomation
- char ssid[] = "zetaA";      // SSID of WIFI
+ char ssid[] = "zeta_dev";      // SSID of WIFI
  char pass[] = "12345678";      // Password of the WIFE
 //char ssid[] = "AndroidHotspot5206";      // SSID of WIFI
 //char pass[] = "123456789";
 int status = WL_IDLE_STATUS;   // The Wifi radio's status
 
 // DB infomation
-const char* server = "54.180.59.135"; // Zeta Server
-const int port = 5543;
+const char* server = "192.168.0.12"; // Zeta Server
+const int port = 5000;
 //const char* server = "192.168.43.244"; // Zeta Server
 //const char* server = "192.168.0.29";
 //const int port = 5000;
@@ -60,6 +61,7 @@ String data_str;
 String inner_str;
 int str_len = 0;
 
+float span_value = 0.0;
 
 // Time variables
 uint64_t Time_getData_current   = 0; // time var for getData
@@ -69,7 +71,7 @@ uint64_t Time_sendData_current   = 0; // time var for sending
 uint64_t Time_sendData_previous  = 0;
 
 uint16_t Time_getDataPeriod   = 500;
-uint16_t Time_sendDataPeriod  = 15000;
+uint16_t Time_sendDataPeriod  = 5000;
 
 WiFiClient client;
 
@@ -93,9 +95,12 @@ float H2O2_PPMf  = 0.0;
 // variables for calibration
 char rec_byte = '\0';
 
+
+// Timer
+Timer tTimer;
+
 void setup() {
-  delay(1000);
-  Serial.begin(9600);
+  Serial.begin(115200);
   delay(1000);
   while(Serial.available()) Serial.read();
   RS485_Serial->begin(9600,SERIAL_8E1);
@@ -108,28 +113,30 @@ void setup() {
   jsonarr[0]["area"].set("A");
   doc["sensor"].set(jsonarr);
   
+  Serial.println("wake up");
+  
   if(*RS485_Serial){
     while(RS485_Serial->available()) RS485_Serial->read();  
-    
   }
   pinMode(SerialTxControl,OUTPUT);
   delay(1000);
   digitalWrite(SerialTxControl,RS485Receive);
-  
+  tTimer.every(2000,Socket);
+  tTimer.every(1000,getH2O2);
   // check for the WiFi module:
   if (WiFi.status() == WL_NO_MODULE) {
-    
-    while (true);
+    while (true){
+      Serial.println("no wifi module");
+      delay(2000);
+    }
   }
-
   String fv = WiFi.firmwareVersion();
   if (fv < WIFI_FIRMWARE_LATEST_VERSION) {
     //Socket_CMD("Please upgrade the firmware");
   }
   // attempt to connect to Wifi network:
   WifiConnect();
-  Serial.println("setup");
-
+  Serial.println("setup finish");
 }
 
 
@@ -138,17 +145,8 @@ void setup() {
 
 void loop() {
   if(WiFi.status() != WL_CONNECTED) WifiConnect();
-  if(Time_sendData_current - Time_sendData_previous > Time_sendDataPeriod ) {
-    Socket();
-    Time_sendData_previous = Time_sendData_current;
-  }
   CMD_pulling();
-  Time_getData_current = millis();
-  if(Time_getData_current - Time_getData_previous > Time_getDataPeriod ){
-    getH2O2();
-    Time_getData_previous = Time_getData_current;
-    Time_sendData_current = millis();
-  }
+  tTimer.update();
 }
 
 
@@ -167,10 +165,9 @@ void WifiConnect() {
   */
   while (WiFi.status() != WL_CONNECTED) {
     status = WiFi.begin(ssid, pass);
-    delay(3000);
     Serial.println("wifi connection failed");
   }
-  //Socket_CMD("MCU are connected to the network");
+  Socket_CMD("MCU are connected to the network");
 }
 
 
@@ -214,10 +211,10 @@ void getH2O2() {
         CRC.CRC_code = CRC16_MODBUS(buffer_sub_Long, RecDataNoCRCLen_Long);
         if(Rec_buffer[5] == CRC.CRC_byte[0] & Rec_buffer[6] == CRC.CRC_byte[1]) Checksum = true;
         if(Checksum) {
-        H2O2_PPM = Rec_buffer[3] + Rec_buffer[4] << 8UL;
-        H2O2_PPMf = double(H2O2_PPM)/10;
-        Checksum = false;
-      }
+          H2O2_PPM = Rec_buffer[3] + Rec_buffer[4] << 8UL;
+          H2O2_PPMf = double(H2O2_PPM)/10;
+          Checksum = false;
+        }
     } else {
       while(RS485_Serial->available()) RS485_Serial->read();
     }
@@ -237,19 +234,13 @@ void getH2O2() {
     
     doc["sensor"].set(jsonarr);
     serializeJson(doc,data_str);
-    //Serial.println(data_str);
-    
-    if(DataShowFlag) {
-      if(!ContinuousFlag) DataShowFlag = false;
-    }
-    SocketSendFlag = true;  
+    Serial.println(data_str);
   }
   
 }
 
 void CMD_pulling() {
   rec_byte = rec_socket;
-  rec_socket = '\0';
   if(rec_byte == 'm') DataShowFlag = true;
   else if(rec_byte == 'z') SetZero();
   else if(rec_byte == 's') SetSpan();
@@ -260,22 +251,16 @@ void CMD_pulling() {
   }
   else if(rec_byte == 'q') ContinuousFlag = false;
   rec_byte = '\0';
+  rec_socket = '\0';
+  
 }
 
 void SetSpan() {
-  float span_value = 0.0;
-  String span_valueS;
   int span_valueI = 0;
   uint8_t numH = 0;
   uint8_t numL = 0;
   char span_valueC[5] = {'\0',};
   uint8_t CRC_buffer[5] = {0x01, 0x39, 0x02, '\0',};
-  if(SocketSpan) {
-    span_valueS = Socket();
-    SocketSpan = false;
-    span_value = span_valueS.toFloat();
-  } else {
-  }
   if(span_value > 500.0 || span_value < 0.09) {
     return;
   }
@@ -295,6 +280,8 @@ void SetSpan() {
   for(int i = 0; i < sizeof(CMD_SPAN); i++) RS485_Serial->write(CMD_SPAN[i]);
   delay(6);
   //Socket_CMD("set span done.");
+  Serial.println("setSpan");
+  delay(5000);
 }
 
 void InitCalib() {
@@ -302,55 +289,42 @@ void InitCalib() {
   for(int i = 0; i < sizeof(CMD_INIT_CALIB); i++) RS485_Serial->write(CMD_INIT_CALIB[i]);
   delay(6);
   //Socket_CMD("init calib done.");
+  Serial.println("initCalib");
+  delay(5000);
 }
 
 void SetZero() {
   digitalWrite(SerialTxControl,RS485Transmit);
   for(int i = 0; i < sizeof(CMD_ZERO); i++) RS485_Serial->write(CMD_ZERO[i]);
   delay(6);
-  rec_byte = DataShowFlag = true;
-  delay(100);
   //Socket_CMD("set zero done.");
-  getH2O2();
+  Serial.println("setZero");
+  delay(5000);
 }
 
-String Socket() {
+void Socket() {
   String recevbline;
   recevbline.reserve(BUFFER_SIZE);
   char data_c[BUFFER_SIZE] = {'\0',};
   
   str_len = data_str.length();
   data_str.toCharArray(data_c,str_len+2);
-  for(int i = 0; i < str_len; i++) {
-    Serial.print(data_c[i]);
-  }
-  Serial.println("");
   if(!client.connect(server, port)) {
-      //Socket_CMD("connecting to server failed");
-      Serial.println("connecting to server failed");
-      return "";
-  } else {
-      if(SocketSpan) {
-        do{
-          recevbline = client.readStringUntil('\n');
-        }while(recevbline[0] == '\0');
-        return recevbline;
-      }
-      if(SocketSendFlag){
-        client.write(data_c);
-        SocketSendFlag = false;
-      }
-     
-      recevbline = client.readStringUntil('\n');
-      Serial.println(recevbline);
-      if(recevbline[0] != '\0'){
-        rec_socket = recevbline[0];
-      }
-      if(rec_socket == 's') SocketSpan = true;  
+    Serial.println("connecting to server failed");
+    return;
+  }
+  client.write(data_c);
+  recevbline = client.readStringUntil('\n');
+  if(recevbline[0] != '\0'){
+    if(recevbline.indexOf("CMD:") != -1) {
+      rec_socket = recevbline[4];
+      recevbline = recevbline.substring(recevbline.indexOf(rec_socket)+1,recevbline.indexOf('\0'));
+      recevbline = recevbline.substring(recevbline.indexOf(':')+1,recevbline.indexOf('\0'));
+      span_value = recevbline.toFloat();
+    }
   }
   client.flush();
   //client.stop();
-  return recevbline;
 }
 
 void Socket_CMD(String msg) {

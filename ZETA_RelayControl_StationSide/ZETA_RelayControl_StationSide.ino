@@ -1,73 +1,107 @@
- /* 
-  *       Author         Ahn semin
-  *       Created        2020.05.07
-  *       Last modified  2020.05.15 18:20
-  *       Description      Relay switch control for Autonomous charging(Station side Arduino Nano)
-  *                      Peripheral device must be paired.
-  */
-  
-#define DEBUG                           1
+/*
+         Author         Ahn semin
+         Created        2020.05.07
+         Last modified  2020.06.02 17:48
+         Description    Relay switch control for Autonomous charging(Station side Arduino Nano)
+
+*/
+
+#define DEBUG                           0
+#define LED_PIN   13
 
 #include "ZETA_RelayControl_StationSide.h"
 
+char recByte = '\0';
+bool nc = true; // no contact detection flag
+
 void setup() {
   // put your setup code here, to run once:
-  char temp[] = "";
-  #if DEBUG
+#if DEBUG
   Serial.begin(SERIAL_SPEED);
   delay(ONE_SEC);
-  #endif
-  pinMode(PWM_PINP,OUTPUT);
-  pinMode(PWM_PINN,OUTPUT); // PWM generation pins
-  BLE.begin();
+#endif
+  pinMode(PWM_PINP, OUTPUT);
+  pinMode(PWM_PINN, OUTPUT);  // PWM generation pins
+  pinMode(RELAYP_PIN, OUTPUT);
+  pinMode(RELAYN_PIN, OUTPUT); // Relay switch control pin
+  digitalWrite(RELAYP_PIN,HIGH);
+  digitalWrite(RELAYN_PIN,HIGH);
+  BTSerial->begin(SERIAL_SPEED);
   delay(ONE_SEC);
-  BLE.setAdvertisedServiceUuid(SerialPortServiceClass_UUID);  // this uuid shows on central devices
-  BLE.setLocalName("Station");
-  
-  BLE.setAdvertisedService(ROS_PUB);
-  ROS_PUB.addCharacteristic(ROS_SendMsg);
-  
-  BLE.setAdvertisedService(ROS_SUB);
-  ROS_SUB.addCharacteristic(ROS_RecMsg);
-  
-  BLE.addService(ROS_PUB);
-  BLE.addService(ROS_SUB);
 
-  //BLE.setAdvertisingInterval(100); // 100* 0.625 ms, default 100ms
-  BLE.advertise();
-  peripheral = BLE.available();
-  
-  tTimer.every(ONE_SEC,PWM_OUTP);
-  tTimer.every(ONE_SEC,PWM_OUTN); // generates periodic signal at every x msec
+  tTimer.every(ONE_SEC, PWM_OUT); // generates periodic signal at every x msec
+  tTimer.every(1.5 * ONE_SEC, LED_blink);
   delay(ONE_SEC);
-  nh.getHardware() -> setBaud(SERIAL_SPEED);
-  nh.initNode();
-  nh.advertise(ContactPub);
-  delay(0.5*ONE_SEC);
-  ROS_SendStr.data = temp;
-  ContactPub.publish(&ROS_SendStr);
-  nh.spinOnce();
-  delay(0.1*ONE_SEC);
+#if DEBUG
+  Serial.println("station setup");
+#endif
 }
 
 void loop() {
   // put your main code here, to run repeatedly:
-  BLEDevice central = BLE.central();  // request BLE connection
-  if(central) { // if Arduino is connected to NUC
-    char temp[] = "send msg";
-    int i = 0;
-    ContactPub.publish(&ROS_SendStr);
-    while(temp[i] != '\0') 
-    delay(100);
-    nh.spinOnce();
-  }
+  getBT();
   tTimer.update();
 }
 
-void PWM_OUTP() {
-  analogWrite(PWM_PINP,PWM_WIDTH*PWM_DUTY);
+void PWM_OUT() {
+  if (nc) {
+#if DEBUG
+    //Serial.println("PWM");
+#endif
+    analogWrite(PWM_PINP, PWM_WIDTH * PWM_DUTY);
+    analogWrite(PWM_PINN, PWM_WIDTH * PWM_DUTY);
+  }
 }
 
-void PWM_OUTN() {
-  analogWrite(PWM_PINN,PWM_WIDTH*PWM_DUTY);
+
+void chargingOn() {
+  digitalWrite(RELAYP_PIN, CHARGER_ON);
+  digitalWrite(RELAYN_PIN, CHARGER_ON);
+  Serial.println("charging on");
 }
+
+void chargingOff() {
+  digitalWrite(RELAYP_PIN, ARDUINO_ON);
+  digitalWrite(RELAYN_PIN, ARDUINO_ON);
+  delay(5 * ONE_SEC);
+  BTSerial->write(RESET);  // send reset signal.
+}
+
+void getBT() {
+  if (BTSerial->available()) {
+    recByte = BTSerial->read();
+    //Serial.println(recByte);
+    if (recByte == CONTACT) { // if the contact are closed
+      nc = false;
+      chargingOn();
+      BTSerial->write(OK);
+      delay(0.3 * ONE_SEC);
+    } else if (recByte == FULLY_CHARGED) { // if the battery is fully charged
+      // write actions after fully charging(assuming the robot is away from the station already)
+      BTSerial->write(OK);
+      delay(5 * ONE_SEC);
+      chargingOff();
+    } else if (recByte == PROXIMITY) { // if the robot is close
+      BTSerial->write(OK);
+      nc = true;
+      delay(0.3 * ONE_SEC);
+    }
+    #if DEBUG
+    Serial.println(recByte);
+    #endif
+    recByte = '\0';
+  }
+}
+
+void LED_blink() {
+  static bool state;
+  if(state) {
+    digitalWrite(LED_PIN, HIGH);
+    state = false;
+  } else if(!state) {
+    digitalWrite(LED_PIN, LOW);
+    state = true;
+  }
+}
+
+// EOF

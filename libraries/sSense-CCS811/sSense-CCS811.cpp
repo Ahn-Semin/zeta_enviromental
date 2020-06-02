@@ -58,10 +58,10 @@ boolean CCS811::begin(uint8_t I2C_ADDR, uint8_t WAKE_PIN, int driveMode)// drive
 
   unsigned int result = getBaseline();
 
-  DebugPort.print("baseline for this sensor: 0x");
+  /*DebugPort.print("baseline for this sensor: 0x");
   if(result < 0x100) DebugPort.print("0");
   if(result < 0x10) DebugPort.print("0");
-  DebugPort.println(result, HEX);
+  DebugPort.println(result, HEX);*/
   
   return true;
 }

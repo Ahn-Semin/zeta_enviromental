@@ -77,10 +77,6 @@ void loop() {
           val[i] = switchCharacteristic.value()[i];
           Serial.print(char(val[i]));
         }while(val[i++]!=0x0A);
-        for(int i = 0 ; i < switchCharacteristic.valueLength(); i++) {
-          val[i] = switchCharacteristic.value()[i];
-          //Serial.print(val[i]);
-        }
         Serial.println("");
          
         if (val>0) {   // any value other than 0

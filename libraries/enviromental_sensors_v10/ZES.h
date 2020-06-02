@@ -1,8 +1,8 @@
 /* 
   *       Author         Ahn semin
-  *       Created        2020.03.24
-  *       Last modified  2020.04.24
-  *       Description    enviromental sensors header
+  *       Created        2020.04
+  *       Last modified  2020.05.20
+  *       Description    Zeta Enviromental Sensor(ZES) header
   */
  
 #ifndef _ENVIROMENTAL_SENSORS_H_
@@ -31,7 +31,8 @@
 #define UART3_RX      15
 #define UART3_TX      14
 
-// pin config
+/* pin config */
+// master
 #define Dust_rxPIN    UART2_RX  // must use with 3.3V level shifter
 #define Dust_txPIN    UART2_TX
 #define CO2_rxPIN     UART1_RX
@@ -40,6 +41,7 @@
 #define HCHO_txPIN    UART3_TX
 #define CO_dacPIN     A0
 
+// slave
 #define NO2_rxPIN     UART1_RX // must use with 3.3V level shifter
 #define NO2_txPIN     UART1_TX
 #define Rn_rxPIN      UART2_RX
@@ -66,7 +68,7 @@
 
 #define CO2_buffersize            10
 #define CO2_len                   4
-#define NO2_len                   128
+#define NO2_len                   255
 #define HCHO_len                  9
 #define ADC_span                  1024.0f
 #define ADC_ref                   1.1f
