@@ -3,6 +3,7 @@
 #include <MPU9250.h>
 
 
+
 #define __DEBUG
 #define _DEBUG
 
@@ -181,12 +182,11 @@ void setup() {
   Serial.begin(115200);
   delay(500);
   
-  Serial1.begin(115200);
-  //delay(1000);
+
   
   Serial.println("Start...");
 
-  attachInterrupt(digitalPinToInterrupt(CNT_PIN), AutoChargingCallback, RISING);  // reads PWM which is generated from NANO(station)
+  //attachInterrupt(digitalPinToInterrupt(CNT_PIN), AutoChargingCallback, RISING);  // reads PWM which is generated from NANO(station)
   //cMPU9250 SEN;
   
   bConnected = SEN.begin();
@@ -213,7 +213,6 @@ void setup() {
   //imu_.begin();
   //Serial.println("Begin imu...");
 
-  Serial1.println("Connect to pc...");
 
   b_StartFlag = 0;
   startcnt = 0;
@@ -387,9 +386,6 @@ void computeIMU( void )
 void serialEvent1() {
 //void Serial_Receive(byte buffer)
 
-  if(!Serial1.available()) return;
-    
-  byte buffer = Serial1.read();
 
 #ifdef __DEBUG
   Serial.print("Receive data : ");
@@ -1064,15 +1060,9 @@ void loop() {
   //printRawData();
   printOrient();
 
-  Serial1.println("Send data...");
 #endif
   
   delay(1);
   //delay(500);
 
-}
-
-void AutoChargingCallback() {
-  if(!contact_flag) PWM_CNT++;
-  if(PWM_CNT > PWM_threshold) contact_flag = true;
 }

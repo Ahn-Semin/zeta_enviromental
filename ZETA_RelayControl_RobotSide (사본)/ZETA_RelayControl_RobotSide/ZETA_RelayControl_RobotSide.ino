@@ -24,7 +24,7 @@ bool FinishFlag               = false;
 bool StartFlag                = false;
 //
 char recByte = '\0';
-
+volatile uint32_t width_p = 0;
 
 void setup() {
   // put your setup code here, to run once:
@@ -37,7 +37,7 @@ void setup() {
   pinMode(CNT_PINP,INPUT_PULLUP);
   //pinMode(CNT_PINN,INPUT);
   delay(0.05*ONE_SEC);
-  //attachInterrupt(digitalPinToInterrupt(CNT_PINP), ContactCallbackP, RISING);  // reads PWM which is generated from NANO(station)
+  //attachInterrupt(digitalPinToInterrupt(CNT_PINP), ContactCallbackP, FALLING);  // reads PWM which is generated from NANO(station)
   //attachInterrupt(digitalPinToInterrupt(CNT_PINN), ContactCallbackN, RISING);
   delay(0.05*ONE_SEC);
   pinMode(RELAYP_PIN,OUTPUT);
@@ -58,16 +58,27 @@ void setup() {
   delay(ONE_SEC);
   #endif
   delay(0.05*ONE_SEC);
-  tTimer.every(0.05*CALLBACK_PERIOD, Refresh); // To prevent the "lost sync"
+  tTimer.every(0.1*CALLBACK_PERIOD, Refresh); // To prevent the "lost sync"
   //tTimer.every(CALLBACK_PERIOD, getCurrentTime);
   tTimer.every(CALLBACK_PERIOD, BTCom);
 }
 
+void ContactCallbackP() {
+  static int cnt;
+  static uint32_t time_pre;
 
+    uint32_t time_current = micros();
+    width_p = (time_current - time_pre)/2;
+    time_pre = time_current;
+    cnt = 0;
+  
+}
 
 void loop() {
   // put your main code here, to run repeatedly:
   pulsecount();
+  ChargingContact();
+  getBT();
   tTimer.update();
 }
 
@@ -77,8 +88,10 @@ void ROSPublishing(String sendmsg) {
   char buffer[BUFFER_SIZE] = {'\0',};
   sendmsg.toCharArray(buffer, sendmsg.length()+1);
   ChargingPubMsg.data = buffer;
-  ChargingPub.publish(&ChargingPubMsg);
-  nh.spinOnce();
+  if(nh.connected()){
+    ChargingPub.publish(&ChargingPubMsg);
+    nh.spinOnce();
+  } else nh.spinOnce();
 }
 
 // ROS subscribe callback func.
@@ -103,10 +116,6 @@ void ChargingContact() {
     Serial.println(F("contact"));
     #endif
     ROSPublishing("contact");
-    delay(50);
-    ROSPublishing("contact");
-    delay(50);
-    ROSPublishing("contact");
     #if DEBUG
     nh.loginfo("contact!!!!!!!!!!!");
     #endif
@@ -114,7 +123,6 @@ void ChargingContact() {
       BTSerial->write(CONTACT);
       getBT();
       delay(0.3 * ONE_SEC);
-      ROSPublishing("waiting BT...");
       #if DEBUG
       nh.loginfo("inf loop before get OK from station(contact)");
       #endif
@@ -154,36 +162,49 @@ void batteryOff() {
   digitalWrite(RELAYP_PIN, ARDUINO_ON);
 }
 
+/*
 void pulsecount() {
-  int width_p = 0;
+  //int width_p = 0;
   static int PWM_CNT_P=0;
-  bool temp = false;
-  char temps[50];
-  //static int cnt;
+  char temp[50];
   
-  if(ProximityFlag && PWM_CNT_P < PWM_threshold) width_p = pulseIn(CNT_PINP,HIGH,PWM_maxWidth);
-  if(width_p > PWM_minWidth && width_p < PWM_maxWidth) {
-    PWM_CNT_P++;
-    temp = true;
-  }
-  if(temp){
-    sprintf(temps,"cnt: %d     width: %d",PWM_CNT_P,width_p);
-    nh.loginfo(temps);
-  }
+  if(ProximityFlag) if(PWM_CNT_P <= PWM_threshold) width_p = pulseIn(CNT_PINP,HIGH,PWM_maxWidth);
+  
+  if(width_p > PWM_minWidth && width_p < PWM_maxWidth) PWM_CNT_P++;
+  sprintf(temp,"cnt: %d, width: %lu [us]",PWM_CNT_P, width_p);
+  nh.loginfo(temp);
   #if DEBUG
-  if(cnt++ % 6000 == 0){
-    sprintf(temp,"cnt: %d     width: %d",PWM_CNT_P,width_p);
-    nh.loginfo(temp);
-    cnt=0;
-  }
+  nh.loginfo(temp);
   #endif
-  if(PWM_CNT_P >= PWM_threshold) {
+  if(PWM_CNT_P > PWM_threshold) {
     ContactFlag_P = true;
     PWM_CNT_P = 0;
-    ChargingContact();
   }
 
 
+}
+*/
+void pulsecount() {
+  static bool high;
+  static int PWM_CNT_P=0;
+  static int cnt;
+  char temp[50];
+  if(ProximityFlag){
+    if((float)analogRead(CNT_PINP) * 5 / 1024 > 3.0) high = true;
+    else if((float)analogRead(CNT_PINP)  * 5 / 1024 < 1.5 && high) {
+      high = false;
+      PWM_CNT_P++;
+    }  
+  }
+  if(cnt++ % 1000 == 0){
+    sprintf(temp,"cnt: %d",PWM_CNT_P);
+    nh.loginfo(temp);
+    cnt = 0;  
+  }  
+  if(PWM_CNT_P > PWM_threshold) {
+    ContactFlag_P = true;
+    PWM_CNT_P = 0;
+  }
 }
 
 void BTCom() {
@@ -192,7 +213,6 @@ void BTCom() {
       BTSerial->write(PROXIMITY);  // if string exists
       delay(0.3*ONE_SEC);
       getBT();
-      ROSPublishing("waiting BT...");
       #if DEBUG
       nh.loginfo("inf loop before start subscribe");
       #endif
@@ -211,7 +231,6 @@ void BTCom() {
       BTSerial->write(FULLY_CHARGED);
       delay(0.3*ONE_SEC);
       getBT();
-      ROSPublishing("waiting BT...");
       #if DEBUG
       nh.loginfo("inf loop after finish subscribe");
       #endif
